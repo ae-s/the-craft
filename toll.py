@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import random
+import time
 
 subscriberlist = []
 
@@ -17,6 +18,10 @@ class Exchange():
         self.name = name
         self.subscribers = dict()
         self.trunkgroups = dict()
+        self.pegs = {"attempt": 0,
+                     "complete": 0,
+                     "congestion": 0
+                     }
 
     def provision(self, to_office, count):
         far_name = to_office.name
@@ -39,27 +44,50 @@ class Exchange():
 
     def call_orig(self, dest_exchange, numba):
         # originate a call
+        self.score_peg("attempt")
         trunk = self.pick_trunk(dest_exchange)
         if trunk is None:
-            return ["congestion"]
+            self.score_peg("congestion")
+            return dict(fate="congestion", trunks=[])
+
         trunk.sleeve = True
-        result = dest_exchange.call_term(dest_exchange, numba, trunk)
-        result.append(trunk)
-        return result
+        call = dest_exchange.call_term(dest_exchange, numba, trunk)
+        call["trunks"].append(trunk)
+        return call
 
     def call_term(self, dest_exchange, numba, inc_trk):
         if dest_exchange == self:
             # terminate
-            return self.subscribers[numba].receive_call(inc_trk)
+            call = self.subscribers[numba].receive_call(inc_trk)
+            call["trunks"] = []
+            return call
         else:
             # tandem
             # XXX unimplemented
-            return ["error: not a tandem"]
+            return dict(fate="error: not a tandem", trunks=[])
 
     def addsub(self, numba, sub):
-        print("{} new subscriber {} {}".format(self.name, numba, sub.name))
+        #print("{} new subscriber {} {}".format(self.name, numba, sub.name))
         self.subscribers[numba] = sub
         subscriberlist.append(sub)
+
+    def score_peg(self, peg):
+        self.pegs[peg] += 1
+    def print_pegs(self):
+        print("hourly report from {}: {}att / {}cpl / {}cong".
+              format(self.name,
+                     self.pegs["attempt"],
+                     self.pegs["complete"],
+                     self.pegs["congestion"]))
+
+
+    def hourly(self):
+        self.pegs = {"attempt": 0,
+                     "complete": 0,
+                     "congestion": 0
+                     }
+        return [ (60, lambda: self.print_pegs()) ]
+
 
 class Subscriber():
     def __init__(self, exchange, numba, name, kind = "resi"):
@@ -73,19 +101,19 @@ class Subscriber():
 
     def call(self, far_exchange, numba):
         cur_call = self.exchange.call_orig(far_exchange, numba)
-        result = cur_call.pop(0)
+        result = cur_call["fate"]
         self.cur_call = cur_call
-        return "subscriber {} calls {}-{} and hears \"{}\"".format(self.name, far_exchange.name, numba, result)
+        return "sub {}-{} calls {}-{} and hears \"{}\"".format(self.exchange.name, self.numba, far_exchange.name, numba, result)
 
     def hangup(self):
-        res = "subscriber {} hangs up releasing {} trunks".format(self.name, len(self.cur_call))
-        for trunk in self.cur_call:
+        res = "sub {}-{} hangs up releasing {} trunks".format(self.exchange.name, self.numba, len(self.cur_call["trunks"]))
+        for trunk in self.cur_call["trunks"]:
             trunk.sleeve = False
         return res
 
     def receive_call(self, inc_trunk):
         self.sleeve = True
-        return(["hello this is " + self.name, self])
+        return dict(term_sub=self, fate="hello this is " + self.name, trunks=[])
 
     def set_friends(self, friends):
         self.friends = friends
@@ -114,14 +142,22 @@ class Subscriber():
 
 wav = Exchange("waverly")
 mel = Exchange("melrose")
+rai = Exchange("rainier")
+
+exchanges = [wav, mel, rai]
 
 # interoffice
 wav.provision(mel, 2)
+wav.provision(rai, 2)
 mel.provision(wav, 2)
+mel.provision(rai, 2)
+rai.provision(wav, 2)
+rai.provision(mel, 2)
 
 # intraoffice
 wav.provision(wav, 6)
 mel.provision(mel, 6)
+rai.provision(rai, 6)
 
 def populate(exchange, quantity):
     for i in range(quantity):
@@ -139,6 +175,7 @@ def populate(exchange, quantity):
 
 
 populate(wav, 100)
+populate(rai, 100)
 
 Joe0 = Subscriber(mel, '0010', 'Joe')
 Joe1 = Subscriber(mel, '0011', 'Ted')
@@ -149,11 +186,11 @@ Joe5 = Subscriber(mel, '0015', 'x')
 Joe6 = Subscriber(mel, '0016', 'y')
 Joe7 = Subscriber(mel, '0017', 'z')
 Joe8 = Subscriber(mel, '0018', 'w')
-Subscriber(mel, '0019', 't')
+Subscriber(mel, '0019', 'city hall')
 Subscriber(mel, '0020', 'u')
 
-actives = [Joe0, Joe1, Joe2, Joe3, Joe4, Joe5, Joe6, Joe7, Joe8]
-#actives = subscriberlist
+#actives = [Joe0, Joe1, Joe2, Joe3, Joe4, Joe5, Joe6, Joe7, Joe8, mel, wav, rai]
+actives = subscriberlist
 
 for a in actives:
     a.set_friends(random.sample(subscriberlist, 6))
@@ -164,9 +201,16 @@ for N in range(6):
     for subscriber in actives:
         actions.extend(subscriber.hourly())
 
+    for switch in exchanges:
+        actions.extend(switch.hourly())
+
     actions.sort(key = lambda tup: tup[0])
     #actionlist = sorted(actions, key=lambda tup: tup[0])
+    last_t = 0
     for action in actions:
         #print(action)
-        (time, callback,) = action
-        print("{}:{:0>2d}".format(N, time), callback())
+        (t, callback,) = action
+        #time.sleep((t - last_t)/60)
+        last_t = t
+        cbres = callback()
+        #print("{}:{:0>2d}".format(N, t), cbres)
