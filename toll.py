@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import random
+
 class Trunk():
     def __init__(self):
         self.dest = None
@@ -56,10 +58,11 @@ class Exchange():
         self.subscribers[numba] = sub
 
 class Subscriber():
-    def __init__(self, exchange, numba, name):
+    def __init__(self, exchange, numba, name, kind = "resi"):
         self.exchange = exchange
         self.numba = numba
         self.name = name
+        self.kind = kind
         exchange.addsub(numba, self)
         self.sleeve = False
         self.cur_call = None
@@ -89,39 +92,44 @@ mel.provision(wav, 2)
 wav.provision(wav, 6)
 mel.provision(mel, 6)
 
-Joe0 = Subscriber(mel, '10', 'Joe')
-Joe1 = Subscriber(mel, '11', 'Ted')
-Joe2 = Subscriber(mel, '12', 'Bill')
-Joe3 = Subscriber(mel, '13', 'Marty')
-Joe4 = Subscriber(mel, '14', 'eeeeeeee')
-Joe5 = Subscriber(mel, '15', 'x')
-Joe6 = Subscriber(mel, '16', 'x')
-Joe7 = Subscriber(mel, '17', 'x')
-Joe8 = Subscriber(mel, '18', 'x')
-Subscriber(mel, '19', 'x')
-Subscriber(mel, '20', 'x')
+def populate(exchange, quantity):
+    for i in range(quantity):
+        n = random.randrange(10)
+        if (n < 1):
+            # 10% are businesses
+            kind = "bus"
+        else:
+            # 90% are resi
+            kind = "resi"
+        Subscriber(exchange,
+                   "{:0>4d}".format(i),
+                   "{} {}".format(kind, n),
+                   kind)
 
-Subscriber(wav, '10', 'operator')
-Subscriber(wav, '11', 'the library')
-Subscriber(wav, '12', 'city hall')
-Subscriber(wav, '13', 'transit')
-Subscriber(wav, '14', 'tax bureau')
-Subscriber(wav, '15', 'dogcatcher')
-Subscriber(wav, '16', 'the other library')
-Subscriber(wav, '17', 'x')
-Subscriber(wav, '18', 'x')
-Subscriber(wav, '19', 'x')
-Subscriber(wav, '20', 'x')
 
-print(Joe0.call(wav, '10'))
-print(Joe1.call(wav, '11'))
+populate(wav, 100)
+
+Joe0 = Subscriber(mel, '0010', 'Joe')
+Joe1 = Subscriber(mel, '0011', 'Ted')
+Joe2 = Subscriber(mel, '0012', 'Bill')
+Joe3 = Subscriber(mel, '0013', 'Marty')
+Joe4 = Subscriber(mel, '0014', 'eeeeeeee')
+Joe5 = Subscriber(mel, '0015', 'x')
+Joe6 = Subscriber(mel, '0016', 'x')
+Joe7 = Subscriber(mel, '0017', 'x')
+Joe8 = Subscriber(mel, '0018', 'x')
+Subscriber(mel, '0019', 'x')
+Subscriber(mel, '0020', 'x')
+
+print(Joe0.call(wav, '0010'))
+print(Joe1.call(wav, '0011'))
 Joe0.hangup()
-print(Joe2.call(wav, '12'))
-print(Joe3.call(wav, '13'))
-print(Joe4.call(wav, '14'))
+print(Joe2.call(wav, '0012'))
+print(Joe3.call(wav, '0013'))
+print(Joe4.call(wav, '0014'))
 Joe1.hangup()
 Joe2.hangup()
-print(Joe5.call(wav, '15'))
-print(Joe6.call(wav, '16'))
-print(Joe7.call(wav, '17'))
-print(Joe8.call(wav, '18'))
+print(Joe5.call(wav, '0015'))
+print(Joe6.call(wav, '0016'))
+print(Joe7.call(wav, '0017'))
+print(Joe8.call(wav, '0018'))
