@@ -2,6 +2,8 @@
 
 import random
 
+subscriberlist = []
+
 class Trunk():
     def __init__(self):
         self.dest = None
@@ -52,10 +54,12 @@ class Exchange():
         else:
             # tandem
             # XXX unimplemented
-            None
+            return ["error: not a tandem"]
 
     def addsub(self, numba, sub):
+        print("{} new subscriber {} {}".format(self.name, numba, sub.name))
         self.subscribers[numba] = sub
+        subscriberlist.append(sub)
 
 class Subscriber():
     def __init__(self, exchange, numba, name, kind = "resi"):
@@ -71,15 +75,42 @@ class Subscriber():
         cur_call = self.exchange.call_orig(far_exchange, numba)
         result = cur_call.pop(0)
         self.cur_call = cur_call
-        return result
+        return "subscriber {} calls {}-{} and hears \"{}\"".format(self.name, far_exchange.name, numba, result)
 
     def hangup(self):
+        res = "subscriber {} hangs up releasing {} trunks".format(self.name, len(self.cur_call))
         for trunk in self.cur_call:
             trunk.sleeve = False
+        return res
 
     def receive_call(self, inc_trunk):
         self.sleeve = True
         return(["hello this is " + self.name, self])
+
+    def set_friends(self, friends):
+        self.friends = friends
+
+    def hourly(self):
+        n = random.randrange(10)
+        if n < 1:
+            # 10% chance of placing two calls
+            Friend = random.sample(self.friends, 2)
+            Atime = random.randrange(60)
+            Btime = random.randrange(60)
+            return [ (Atime, lambda: self.call(Friend[0].exchange, Friend[0].numba)) ,
+                     (Atime + 2, lambda: self.hangup()) ,
+                     (Btime, lambda: self.call(Friend[1].exchange, Friend[1].numba)),
+                     (Btime + 2, lambda: self.hangup())
+        ]
+        elif n < 4:
+            # 30% chance of placing one call
+            A = random.sample(self.friends, 1)
+            Atime = random.randrange(60)
+            return [ (Atime, lambda: self.call(A[0].exchange, A[0].numba)),
+                     (Atime + 2, lambda: self.hangup())
+            ]
+        else:
+            return []
 
 wav = Exchange("waverly")
 mel = Exchange("melrose")
@@ -103,7 +134,7 @@ def populate(exchange, quantity):
             kind = "resi"
         Subscriber(exchange,
                    "{:0>4d}".format(i),
-                   "{} {}".format(kind, n),
+                   "{}-{}".format(kind, i),
                    kind)
 
 
@@ -115,21 +146,27 @@ Joe2 = Subscriber(mel, '0012', 'Bill')
 Joe3 = Subscriber(mel, '0013', 'Marty')
 Joe4 = Subscriber(mel, '0014', 'eeeeeeee')
 Joe5 = Subscriber(mel, '0015', 'x')
-Joe6 = Subscriber(mel, '0016', 'x')
-Joe7 = Subscriber(mel, '0017', 'x')
-Joe8 = Subscriber(mel, '0018', 'x')
-Subscriber(mel, '0019', 'x')
-Subscriber(mel, '0020', 'x')
+Joe6 = Subscriber(mel, '0016', 'y')
+Joe7 = Subscriber(mel, '0017', 'z')
+Joe8 = Subscriber(mel, '0018', 'w')
+Subscriber(mel, '0019', 't')
+Subscriber(mel, '0020', 'u')
 
-print(Joe0.call(wav, '0010'))
-print(Joe1.call(wav, '0011'))
-Joe0.hangup()
-print(Joe2.call(wav, '0012'))
-print(Joe3.call(wav, '0013'))
-print(Joe4.call(wav, '0014'))
-Joe1.hangup()
-Joe2.hangup()
-print(Joe5.call(wav, '0015'))
-print(Joe6.call(wav, '0016'))
-print(Joe7.call(wav, '0017'))
-print(Joe8.call(wav, '0018'))
+actives = [Joe0, Joe1, Joe2, Joe3, Joe4, Joe5, Joe6, Joe7, Joe8]
+#actives = subscriberlist
+
+for a in actives:
+    a.set_friends(random.sample(subscriberlist, 6))
+
+for N in range(6):
+    print("=================== hour", N)
+    actions = []
+    for subscriber in actives:
+        actions.extend(subscriber.hourly())
+
+    actions.sort(key = lambda tup: tup[0])
+    #actionlist = sorted(actions, key=lambda tup: tup[0])
+    for action in actions:
+        #print(action)
+        (time, callback,) = action
+        print("{}:{:0>2d}".format(N, time), callback())
