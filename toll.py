@@ -177,17 +177,17 @@ rai = Exchange("rainier")
 exchanges = [wav, mel, rai]
 
 # interoffice
-wav.provision(mel, 4)
-wav.provision(rai, 4)
-mel.provision(wav, 4)
-mel.provision(rai, 4)
-rai.provision(wav, 4)
-rai.provision(mel, 4)
+wav.provision(mel, 9)
+wav.provision(rai, 9)
+mel.provision(wav, 9)
+mel.provision(rai, 9)
+rai.provision(wav, 9)
+rai.provision(mel, 9)
 
 # intraoffice
-wav.provision(wav, 6)
-mel.provision(mel, 6)
-rai.provision(rai, 6)
+wav.provision(wav, 10)
+mel.provision(mel, 10)
+rai.provision(rai, 10)
 
 def populate(exchange, quantity):
     for i in range(quantity):
@@ -224,7 +224,7 @@ Subscriber(mel, '1020', 'u')
 actives = subscriberlist
 
 for a in actives:
-    a.set_friends(random.sample(subscriberlist, 6))
+    a.set_friends(random.sample(subscriberlist, 15))
 
 for N in range(24):
     print("=================== hour", N)
