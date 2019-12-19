@@ -4,6 +4,11 @@ import random
 import time
 
 subscriberlist = []
+service = {
+    "OK": 0,
+    "NC": 0,
+    "BY": 0,
+}
 
 class Trunk():
     def __init__(self):
@@ -19,8 +24,7 @@ class Exchange():
         self.subscribers = dict()
         self.trunkgroups = dict()
         self.pegs = {"attempt": 0,
-                     "complete": 0,
-                     "congestion": 0
+                     "congestion": 0,
                      }
 
     def provision(self, to_office, count):
@@ -48,7 +52,8 @@ class Exchange():
         trunk = self.pick_trunk(dest_exchange)
         if trunk is None:
             self.score_peg("congestion")
-            return dict(fate="congestion", trunks=[])
+            print('{}: congestion towards {}'.format(self.name, dest_exchange.name))
+            return dict(fate="congestion", service="NC", trunks=[])
 
         trunk.sleeve = True
         call = dest_exchange.call_term(dest_exchange, numba, trunk)
@@ -64,7 +69,7 @@ class Exchange():
         else:
             # tandem
             # XXX unimplemented
-            return dict(fate="error: not a tandem", trunks=[])
+            return dict(fate="error: not a tandem", service="ER", trunks=[])
 
     def addsub(self, numba, sub):
         #print("{} new subscriber {} {}".format(self.name, numba, sub.name))
@@ -74,17 +79,21 @@ class Exchange():
     def score_peg(self, peg):
         self.pegs[peg] += 1
     def print_pegs(self):
-        print("hourly report from {}: {}att / {}cpl / {}cong".
+        print("hourly report from {}: {}att / {}ok / {}nc {}by".
               format(self.name,
                      self.pegs["attempt"],
-                     self.pegs["complete"],
-                     self.pegs["congestion"]))
+                     self.pegs["congestion"],
+                     self.pegs["OK"],
+                     self.pegs["NC"],
+                     self.pegs["BY"]))
 
 
     def hourly(self):
         self.pegs = {"attempt": 0,
-                     "complete": 0,
-                     "congestion": 0
+                     "congestion": 0,
+                     "OK": 0,
+                     "NC": 0,
+                     "BY": 0,
                      }
         return [ (60, lambda: self.print_pegs()) ]
 
@@ -102,18 +111,34 @@ class Subscriber():
     def call(self, far_exchange, numba):
         cur_call = self.exchange.call_orig(far_exchange, numba)
         result = cur_call["fate"]
+        service[cur_call["service"]] += 1
         self.cur_call = cur_call
-        return "sub {}-{} calls {}-{} and hears \"{}\"".format(self.exchange.name, self.numba, far_exchange.name, numba, result)
+        return "sub {}-{} calls {}-{} and hears \"{}\"".format(
+            self.exchange.name, self.numba, far_exchange.name, numba, result)
 
     def hangup(self):
-        res = "sub {}-{} hangs up releasing {} trunks".format(self.exchange.name, self.numba, len(self.cur_call["trunks"]))
+        if self.cur_call == None:
+            return "nothing"
+        res = "sub {}-{} hangs up releasing {} trunks".format(
+            self.exchange.name, self.numba, len(self.cur_call["trunks"]))
+        if "term_sub" in self.cur_call:
+            self.cur_call["term_sub"].sleeve = False
         for trunk in self.cur_call["trunks"]:
             trunk.sleeve = False
+        self.cur_call = None
         return res
 
     def receive_call(self, inc_trunk):
+        if self.sleeve == True:
+            return dict(fate="busy",
+                        service="BY",
+                        trunks=[])
+
         self.sleeve = True
-        return dict(term_sub=self, fate="hello this is " + self.name, trunks=[])
+        return dict(term_sub=self,
+                    fate="hello this is " + self.name,
+                    service="OK",
+                    trunks=[])
 
     def set_friends(self, friends):
         self.friends = friends
@@ -147,12 +172,12 @@ rai = Exchange("rainier")
 exchanges = [wav, mel, rai]
 
 # interoffice
-wav.provision(mel, 2)
-wav.provision(rai, 2)
-mel.provision(wav, 2)
-mel.provision(rai, 2)
-rai.provision(wav, 2)
-rai.provision(mel, 2)
+wav.provision(mel, 4)
+wav.provision(rai, 4)
+mel.provision(wav, 4)
+mel.provision(rai, 4)
+rai.provision(wav, 4)
+rai.provision(mel, 4)
 
 # intraoffice
 wav.provision(wav, 6)
@@ -176,18 +201,19 @@ def populate(exchange, quantity):
 
 populate(wav, 100)
 populate(rai, 100)
+populate(mel, 100)
 
-Joe0 = Subscriber(mel, '0010', 'Joe')
-Joe1 = Subscriber(mel, '0011', 'Ted')
-Joe2 = Subscriber(mel, '0012', 'Bill')
-Joe3 = Subscriber(mel, '0013', 'Marty')
-Joe4 = Subscriber(mel, '0014', 'eeeeeeee')
-Joe5 = Subscriber(mel, '0015', 'x')
-Joe6 = Subscriber(mel, '0016', 'y')
-Joe7 = Subscriber(mel, '0017', 'z')
-Joe8 = Subscriber(mel, '0018', 'w')
-Subscriber(mel, '0019', 'city hall')
-Subscriber(mel, '0020', 'u')
+Joe0 = Subscriber(mel, '1010', 'Joe')
+Joe1 = Subscriber(mel, '1011', 'Ted')
+Joe2 = Subscriber(mel, '1012', 'Bill')
+Joe3 = Subscriber(mel, '1013', 'Marty')
+Joe4 = Subscriber(mel, '1014', 'eeeeeeee')
+Joe5 = Subscriber(mel, '1015', 'x')
+Joe6 = Subscriber(mel, '1016', 'y')
+Joe7 = Subscriber(mel, '1017', 'z')
+Joe8 = Subscriber(mel, '1018', 'w')
+Subscriber(mel, '1019', 'city hall')
+Subscriber(mel, '1020', 'u')
 
 #actives = [Joe0, Joe1, Joe2, Joe3, Joe4, Joe5, Joe6, Joe7, Joe8, mel, wav, rai]
 actives = subscriberlist
@@ -195,7 +221,7 @@ actives = subscriberlist
 for a in actives:
     a.set_friends(random.sample(subscriberlist, 6))
 
-for N in range(6):
+for N in range(24):
     print("=================== hour", N)
     actions = []
     for subscriber in actives:
@@ -203,6 +229,8 @@ for N in range(6):
 
     for switch in exchanges:
         actions.extend(switch.hourly())
+
+    print("{} actions to do".format(len(actions)))
 
     actions.sort(key = lambda tup: tup[0])
     #actionlist = sorted(actions, key=lambda tup: tup[0])
@@ -213,4 +241,6 @@ for N in range(6):
         #time.sleep((t - last_t)/60)
         last_t = t
         cbres = callback()
-        #print("{}:{:0>2d}".format(N, t), cbres)
+        print("{}:{:0>2d}".format(N, t), cbres)
+
+    print("service summary:", service)
