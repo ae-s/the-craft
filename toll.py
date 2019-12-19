@@ -8,6 +8,7 @@ service = {
     "OK": 0,
     "NC": 0,
     "BY": 0,
+    "EQ": 0,
 }
 
 class Trunk():
@@ -26,6 +27,8 @@ class Exchange():
         self.pegs = {"attempt": 0,
                      "congestion": 0,
                      }
+        # randomly drop 0.1% of calls
+        self.shittiness = 0.001
 
     def provision(self, to_office, count):
         far_name = to_office.name
@@ -61,6 +64,8 @@ class Exchange():
         return call
 
     def call_term(self, dest_exchange, numba, inc_trk):
+        if random.uniform(0,1) < self.shittiness:
+            return dict(fate="equipment trouble", service="EQ", trunks=[])
         if dest_exchange == self:
             # terminate
             call = self.subscribers[numba].receive_call(inc_trk)
