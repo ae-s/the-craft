@@ -1,0 +1,60 @@
+waverly:
+  latitude: 10
+  longitude: 10
+
+  trunkgroups:
+    waverly: 20
+    melrose: 9
+    rainier: 9
+    tandem: 4
+
+  routes:
+    waverly: [waverly]
+    melrose: [melrose, tandem]
+    rainier: [rainier, tandem]
+
+  subs: 100
+
+melrose:
+  latitude: 80
+  longitude: 10
+
+  trunkgroups:
+    waverly: 9
+    melrose: 20
+    rainier: 9
+    tandem: 4
+
+  routes:
+    waverly: [waverly, tandem]
+    melrose: [melrose]
+    rainier: [rainier, tandem]
+
+  subs: 100
+
+rainier:
+  latitude: 60
+  longitude: 80
+
+  trunkgroups:
+    waverly: 9
+    melrose: 9
+    rainier: 20
+    tandem: 4
+
+  routes:
+    waverly: [waverly, tandem]
+    melrose: [melrose, tandem]
+    rainier: [rainier]
+
+  subs: 100
+
+tandem:
+  latitude: 30
+  longitude: 30
+
+  trunks:
+    waverly: 4
+    melrose: 4
+    rainier: 4
+

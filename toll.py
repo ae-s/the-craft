@@ -2,7 +2,7 @@
 
 import random
 import time
-from configparser import ConfigParser
+import yaml
 import re
 
 subscriberlist = []
@@ -29,6 +29,7 @@ class Exchange():
         self.pegs = {"attempt": 0,
                      "congestion": 0,
                      }
+        self.routes = dict()
         # randomly drop 0.1% of calls
         self.shittiness = 0.001
 
@@ -43,7 +44,7 @@ class Exchange():
         self.trunkgroups[far_name] = group
 
     def provision_incoming(self, trunk, from_office):
-        None
+        return None
 
     def pick_trunk(self, dest_exchange):
         # first route
@@ -60,7 +61,7 @@ class Exchange():
         trunk = self.pick_trunk(dest_exchange)
         if trunk is None:
             self.score_peg("congestion")
-            print('{}: congestion towards {}'.format(self.name, dest_exchange.name))
+            #print('{}: congestion towards {}'.format(self.name, dest_exchange.name))
             return dict(fate="congestion", service="NC", trunks=[])
 
         trunk.sleeve = True
@@ -184,33 +185,33 @@ def populate(exchange, quantity):
         else:
             # 90% are resi
             kind = "resi"
-        print("populating", kind, exchange.name)
+        #print("populating", kind, exchange.name)
         Subscriber(exchange,
                    "{:0>4d}".format(i),
                    "{}-{}".format(kind, i),
                    kind)
 
-config = ConfigParser()
-config.read_file(open('smalltown.ini'))
+with open(r'smalltown.yaml') as file:
+    cfg = yaml.load(file)
 
 exchanges = dict()
-for sect in config.sections():
-    e = Exchange(sect)
-    exchanges[sect] = e
-    print("made new exchange", sect)
+for name, val in cfg.items():
+    e = Exchange(name)
+    exchanges[name] = e
+    print("made new exchange", name)
 
-pattern = re.compile("tg\.(.*)")
 for name in exchanges:
     e = exchanges[name]
-    for k, v in config.items(name):
-        m = pattern.match(k)
-        if m:
-            towards = m.group(1)
-            count = config.getint(name, k)
-            e.provision(exchanges[towards], count)
-            print("added N trunks from X to Y", count, name, towards)
+    for k, v in cfg[name].items():
+        if k == 'trunkgroups':
+            for towards, count in v.items():
+                e.provision(exchanges[towards], count)
+                print("added N trunks from X to Y", count, name, towards)
+        elif k == "routes":
+            for towards, groups in v.items():
+                e.routes['towards'] = groups
         elif k == "subs":
-            subs = config.getint(name, "subs")
+            subs = v
             populate(e, subs)
             print("added N subs to", name, subs)
 
@@ -239,6 +240,6 @@ for N in range(24):
         #time.sleep((t - last_t)/60)
         last_t = t
         cbres = callback()
-        print("{}:{:0>2d}".format(N, t), cbres)
+        #print("{}:{:0>2d}".format(N, t), cbres)
 
     print("service summary:", service)
