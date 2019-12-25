@@ -44,10 +44,13 @@ class Exchange():
         None
 
     def pick_trunk(self, dest_exchange):
+        # first route
         group = self.trunkgroups[dest_exchange.name]
         for t in group:
             if t.sleeve == False:
                 return t
+        # second route
+        return None
 
     def call_orig(self, dest_exchange, numba):
         # originate a call
