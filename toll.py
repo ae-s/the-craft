@@ -2,6 +2,8 @@
 
 import random
 import time
+from configparser import ConfigParser
+import re
 
 subscriberlist = []
 service = {
@@ -173,25 +175,6 @@ class Subscriber():
         else:
             return []
 
-wav = Exchange("waverly")
-mel = Exchange("melrose")
-rai = Exchange("rainier")
-
-exchanges = [wav, mel, rai]
-
-# interoffice
-wav.provision(mel, 9)
-wav.provision(rai, 9)
-mel.provision(wav, 9)
-mel.provision(rai, 9)
-rai.provision(wav, 9)
-rai.provision(mel, 9)
-
-# intraoffice
-wav.provision(wav, 10)
-mel.provision(mel, 10)
-rai.provision(rai, 10)
-
 def populate(exchange, quantity):
     for i in range(quantity):
         n = random.randrange(10)
@@ -201,29 +184,36 @@ def populate(exchange, quantity):
         else:
             # 90% are resi
             kind = "resi"
+        print("populating", kind, exchange.name)
         Subscriber(exchange,
                    "{:0>4d}".format(i),
                    "{}-{}".format(kind, i),
                    kind)
 
+config = ConfigParser()
+config.read_file(open('smalltown.ini'))
 
-populate(wav, 100)
-populate(rai, 100)
-populate(mel, 100)
+exchanges = dict()
+for sect in config.sections():
+    e = Exchange(sect)
+    exchanges[sect] = e
+    print("made new exchange", sect)
 
-Joe0 = Subscriber(mel, '1010', 'Joe')
-Joe1 = Subscriber(mel, '1011', 'Ted')
-Joe2 = Subscriber(mel, '1012', 'Bill')
-Joe3 = Subscriber(mel, '1013', 'Marty')
-Joe4 = Subscriber(mel, '1014', 'eeeeeeee')
-Joe5 = Subscriber(mel, '1015', 'x')
-Joe6 = Subscriber(mel, '1016', 'y')
-Joe7 = Subscriber(mel, '1017', 'z')
-Joe8 = Subscriber(mel, '1018', 'w')
-Subscriber(mel, '1019', 'city hall')
-Subscriber(mel, '1020', 'u')
+pattern = re.compile("tg\.(.*)")
+for name in exchanges:
+    e = exchanges[name]
+    for k, v in config.items(name):
+        m = pattern.match(k)
+        if m:
+            towards = m.group(1)
+            count = config.getint(name, k)
+            e.provision(exchanges[towards], count)
+            print("added N trunks from X to Y", count, name, towards)
+        elif k == "subs":
+            subs = config.getint(name, "subs")
+            populate(e, subs)
+            print("added N subs to", name, subs)
 
-#actives = [Joe0, Joe1, Joe2, Joe3, Joe4, Joe5, Joe6, Joe7, Joe8, mel, wav, rai]
 actives = subscriberlist
 
 for a in actives:
@@ -236,7 +226,7 @@ for N in range(24):
         actions.extend(subscriber.hourly())
 
     for switch in exchanges:
-        actions.extend(switch.hourly())
+        actions.extend(exchanges[switch].hourly())
 
     print("{} actions to do".format(len(actions)))
 
