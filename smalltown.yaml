@@ -53,8 +53,12 @@ tandem:
   latitude: 30
   longitude: 30
 
-  trunks:
+  trunkgroups:
     waverly: 4
     melrose: 4
     rainier: 4
 
+  routes:
+    waverly: [waverly]
+    melrose: [melrose]
+    rainier: [rainier]

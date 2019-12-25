@@ -47,43 +47,38 @@ class Exchange():
         return None
 
     def pick_trunk(self, dest_exchange):
-        # first route
-        group = self.trunkgroups[dest_exchange.name]
-        for t in group:
-            if t.sleeve == False:
-                return t
-        # second route
+        for nexthop in self.routes[dest_exchange.name]:
+            group = self.trunkgroups[nexthop]
+            for t in group:
+                if t.sleeve == False:
+                    return t
         return None
 
-    def call_orig(self, dest_exchange, numba):
+    def call_orig(self, dest_exchange, numba, via=None):
         # originate a call
         self.score_peg("attempt")
-        trunk = self.pick_trunk(dest_exchange)
+        trunk = self.pick_trunk(via or dest_exchange)
         if trunk is None:
             self.score_peg("congestion")
-            #print('{}: congestion towards {}'.format(self.name, dest_exchange.name))
             return dict(fate="congestion", service="NC", trunks=[])
 
         trunk.sleeve = True
-        call = dest_exchange.call_term(dest_exchange, numba, trunk)
+        call = trunk.dest.call_term(dest_exchange, numba, trunk)
         call["trunks"].append(trunk)
         return call
 
     def call_term(self, dest_exchange, numba, inc_trk):
         if random.uniform(0,1) < self.shittiness:
             return dict(fate="equipment trouble", service="EQ", trunks=[])
-        if dest_exchange == self:
-            # terminate
+        if dest_exchange == self: # terminate
             call = self.subscribers[numba].receive_call(inc_trk)
             call["trunks"] = []
             return call
-        else:
-            # tandem
-            # XXX unimplemented
-            return dict(fate="error: not a tandem", service="ER", trunks=[])
+        else: # tandem
+            call = self.call_orig(dest_exchange, numba)
+            return call
 
     def addsub(self, numba, sub):
-        #print("{} new subscriber {} {}".format(self.name, numba, sub.name))
         self.subscribers[numba] = sub
         subscriberlist.append(sub)
 
@@ -185,7 +180,6 @@ def populate(exchange, quantity):
         else:
             # 90% are resi
             kind = "resi"
-        #print("populating", kind, exchange.name)
         Subscriber(exchange,
                    "{:0>4d}".format(i),
                    "{}-{}".format(kind, i),
@@ -209,7 +203,8 @@ for name in exchanges:
                 print("added N trunks from X to Y", count, name, towards)
         elif k == "routes":
             for towards, groups in v.items():
-                e.routes['towards'] = groups
+                print("route from X is:", name, towards, groups)
+                e.routes[towards] = groups
         elif k == "subs":
             subs = v
             populate(e, subs)
