@@ -238,3 +238,4 @@ for N in range(24):
         #print("{}:{:0>2d}".format(N, t), cbres)
 
     print("service summary:", service)
+    print("blocking rate:", 100* service['NC'] / service['OK'], "%")

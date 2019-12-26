@@ -1,0 +1,13 @@
+* calls per station
+** local
+   - 1928: 5.5 local calls per station https://archive.org/details/bstj9-1-1/page/n5
+* busies and troubles
+** busy
+   - 1928: 10% of calls go to busy https://archive.org/details/bstj9-1-1/page/n7
+
+* call times
+  - holding times https://archive.org/details/bstj20-4-365/page/n3
+
+* trunk group sizes
+  - graphical rendering of murray hill 1xb trunk groups, 1956
+    https://archive.org/details/bstj35-2-421/page/n56
